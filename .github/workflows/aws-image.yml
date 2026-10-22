@@ -1,0 +1,67 @@
+# Build the saveload-backend image for the AWS apps cluster (True-AI-Labs/true-apps-ops)
+# and push it to ECR. Flux image automation there picks the newest
+# main-<sha9>-<unix time> tag and commits the digest pin; this workflow deploys nothing.
+#
+# Auth: GitHub OIDC -> IAM role true-apps-prod-gha-ecr-push (master only).
+name: AWS image
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-image
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-central-1
+  AWS_ROLE_ARN: arn:aws:iam::994220462772:role/true-apps-prod-gha-ecr-push
+  IMAGE: 994220462772.dkr.ecr.eu-central-1.amazonaws.com/true-apps/saveload-backend
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      # The base image is on ECR Public; anonymous pulls from shared runner IPs
+      # get 429. Its auth endpoint is us-east-1 only.
+      - uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
+        env:
+          AWS_REGION: us-east-1
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Tag
+        id: tag
+        run: echo "tag=main-${GITHUB_SHA::9}-$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          provenance: false
+          tags: ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: echo "saveload-backend: ${{ steps.tag.outputs.tag }} @ ${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
