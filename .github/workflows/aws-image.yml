@@ -49,7 +49,8 @@ jobs:
 
       - name: Tag
         id: tag
-        run: echo "tag=main-${GITHUB_SHA::9}-$(date +%s)" >> "$GITHUB_OUTPUT"
+        run: >-
+          echo "tag=main-${GITHUB_SHA::9}-$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         id: build
@@ -64,4 +65,5 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Summary
-        run: echo "saveload-backend: ${{ steps.tag.outputs.tag }} @ ${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+        run: >-
+          echo "saveload-backend: ${{ steps.tag.outputs.tag }} @ ${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
