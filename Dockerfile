@@ -1,4 +1,4 @@
-# Chart save/load storage (TradingView Advanced Charts), same process as the Procfile.
+# Chart save/load storage (TradingView Advanced Charts), one gunicorn process.
 FROM public.ecr.aws/docker/library/python:3.8-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PORT=8080
 WORKDIR /app
